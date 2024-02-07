@@ -10,6 +10,13 @@
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
+
+//global variables
+unsigned long days = 0;
+unsigned long hours = 0;
+unsigned long minutes = 0;
+unsigned long seconds = 0; 
+
 void setup() {
   Serial.begin(115200);
 
@@ -38,5 +45,11 @@ void loop() {
  }
 
  void print_time_now(){
-   print_line()
+   print_line(String(days), 2, 0, 0);
+   print_line(":", 2,20,0);
+   print_line(String(hours), 2, 30, 0);
+   print_line(":", 2,50,0);
+   print_line(String(minutes), 2, 60, 0);
+   print_line(":", 2,80,0);
+   print_line(String(seconds), 2, 90, 0);
  }
