@@ -9,6 +9,11 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
+#define UP 35
+#define DOWN 32
+#define OK 33
+#define CANCEL 34
+
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
@@ -26,9 +31,17 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 19800;
 const int   daylightOffset_sec = 0;
 
+int current_mode = 0;
+int max_modes = 4;
+String options[] = {"1 - Set Time","2 - Set Alarm", "3 - Set Alarm 2" , "4 - Remove Alarm"};
+
 void setup() {
   Serial.begin(115200);
 
+  pinMode(UP, INPUT);
+  pinMode(DOWN, INPUT);
+  pinMode(OK, INPUT);
+  pinMode(CANCEL, INPUT);
 
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
     Serial.println(F("SSD1306 allocation failed"));
@@ -98,3 +111,56 @@ delay(1000);
    seconds = atoi(sec_str);
 
  }
+
+ int wait_for_button_press(){
+   if(digitalRead(UP) == LOW){
+     delay(200);
+     return UP;
+   }
+   else if(digitalRead(DOWN) == LOW){
+     delay(200);
+     return DOWN;
+   }
+   else if(digitalRead(CANCEL) == LOW){
+     delay(200);
+     return CANCEL;
+   }
+   else if(digitalRead(OK) == LOW){
+     delay(200);
+     return OK;
+   }
+
+   //print time();
+ }
+
+void go_to_menu(){
+  while(digitalRead(CANCEL) == HIGH){
+    display.clearDisplay();
+    print_line(options[current_mode],2,0,0);
+
+    int pressed = wait_for_button_press();
+
+    if(pressed == UP){
+      current_mode += 1;
+      current_mode %= max_modes;
+      delay(200);
+    }
+
+    else if(pressed == DOWN){
+      current_mode -= 1;
+      if(current_mode < 0){
+        current_mode = max_modes -1;
+      }
+      delay(200);
+    }
+    else if(pressed == OK){
+      Serial.print(current_mode);
+      delay(200);
+      run_mode(current_mode);
+    }
+  }
+}
+
+void run_mode(int mode){
+
+}
