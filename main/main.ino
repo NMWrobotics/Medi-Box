@@ -68,6 +68,11 @@ void loop() {
   display.clearDisplay();
   print_time_now();
 delay(1000);  
+if(digitalRead(CANCEL) == LOW){
+  Serial.print("Menu");
+  delay(1000);
+  go_to_menu();
+}
 }
 
  void print_line(String text, int text_size, int column, int row){
@@ -163,4 +168,63 @@ void go_to_menu(){
 
 void run_mode(int mode){
 
+}
+
+void set_alarm(int alarm){
+
+  int temp_hour = alram_hours[alarm];
+  while(true){
+    display.clearDisplay();
+    print_line("Enter hour: " +String(temp_hour), 0,0,2);
+
+    int pressed = wait_for_button_press();
+    if(pressed == UP){
+      delay(200);
+      temp_hour += 1;
+      temp_hour %= 24;
+    }
+    else if (pressed = DOWN){
+      delay(200);
+      temp_hour -= 1;
+      if(temp_hour < 0) temp_hour = 23;   
+    }
+    else if (pressed = OK){
+      delay(200);
+      alarm_hour[alarm] = temp_hour;
+      break;   
+    }
+    else if(pressed == CANCEL){
+      delay(200);
+      break;
+    }
+  }
+  
+  int temp_minute = alram_minutes[alarm];
+  while(true){
+    display.clearDisplay();
+    print_line("Enter minute: " +String(temp_minute), 0,0,2);
+
+    int pressed = wait_for_button_press();
+    if(pressed == UP){
+      delay(200);
+      temp_minute += 1;
+      temp_minute %= 24;
+    }
+    else if (pressed = DOWN){
+      delay(200);
+      temp_minute -= 1;
+      if(temp_minute < 0) temp_hour = 59;   
+    }
+    else if (pressed = OK){
+      delay(200);
+      alarm_minutes[alarm] = temp_minute;
+      break;   
+    }
+    else if(pressed == CANCEL){
+      delay(200);
+      break;
+    }
+  }
+  display.clearDisplay();
+  print_line("Alarm is set", 0,0,2);
 }
