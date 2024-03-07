@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <DHTesp.h>
 #include <String.h>
 #include <WiFi.h>
 #include "time.h"
@@ -9,16 +10,36 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
-#define UP 35
-#define DOWN 32
-#define OK 33
-#define CANCEL 34
+#define UP 34
+#define DOWN 35
+#define OK 32
+#define CANCEL 33
+
+#define BUZZER 18
+#define LED_1 15
+#define LED_2 2
+#define DHT 12
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
+//declaration of DHT11
+DHTesp dhtSensor;
 
 //global variables
+int n_notes = 8;
+int C = 262;
+int D = 294;
+int E = 330;
+int F = 349;
+int G = 392;
+int A = 440;
+int B = 494;
+int C_H = 523;
+int notes[] = {C,D,E,F,G,A,B,C_H};
+
+
+
 unsigned long days = 0;
 unsigned long hours = 0;
 unsigned long minutes = 0;
@@ -31,6 +52,12 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 19800;
 const int   daylightOffset_sec = 0;
 
+bool alarm_enabled = false;
+int n_alarms = 2;
+int alarm_hours[] = {0,0};
+int alarm_minutes[] = {1,10};
+bool alarm_triggered[] = {false,false};
+
 int current_mode = 0;
 int max_modes = 4;
 String options[] = {"1 - Set Time","2 - Set Alarm", "3 - Set Alarm 2" , "4 - Remove Alarm"};
@@ -38,10 +65,15 @@ String options[] = {"1 - Set Time","2 - Set Alarm", "3 - Set Alarm 2" , "4 - Rem
 void setup() {
   Serial.begin(115200);
 
+  pinMode(BUZZER, OUTPUT);
+  pinMode(LED_1, OUTPUT);
+  pinMode(LED_2, OUTPUT);
   pinMode(UP, INPUT);
   pinMode(DOWN, INPUT);
   pinMode(OK, INPUT);
   pinMode(CANCEL, INPUT);
+
+  dhtSensor.setup(DHT, DHTesp::DHT22);
 
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
     Serial.println(F("SSD1306 allocation failed"));
@@ -65,14 +97,14 @@ void setup() {
 }
 
 void loop() {
-  display.clearDisplay();
-  print_time_now();
-delay(1000);  
-if(digitalRead(CANCEL) == LOW){
-  Serial.print("Menu");
-  delay(1000);
-  go_to_menu();
-}
+  update_time_with_check_alarm();
+
+  if(digitalRead(CANCEL) == LOW){
+    Serial.print("Menu");
+    delay(1000);
+    go_to_menu();
+  }
+  check_temp();
 }
 
  void print_line(String text, int text_size, int column, int row){
@@ -118,6 +150,7 @@ if(digitalRead(CANCEL) == LOW){
  }
 
  int wait_for_button_press(){
+   while(true){
    if(digitalRead(UP) == LOW){
      delay(200);
      return UP;
@@ -134,7 +167,8 @@ if(digitalRead(CANCEL) == LOW){
      delay(200);
      return OK;
    }
-
+   }
+  update_time();   
    //print time();
  }
 
@@ -159,7 +193,7 @@ void go_to_menu(){
       delay(200);
     }
     else if(pressed == OK){
-      Serial.print(current_mode);
+      Serial.println(current_mode);
       delay(200);
       run_mode(current_mode);
     }
@@ -167,12 +201,16 @@ void go_to_menu(){
 }
 
 void run_mode(int mode){
-
+  /*if(mode == 0){
+    set_time();
+  }*/
+if(mode ==1 || mode == 2) set_alarm(mode-1);
+else if(mode ==3) alarm_enabled = false;
 }
 
 void set_alarm(int alarm){
 
-  int temp_hour = alram_hours[alarm];
+  int temp_hour = alarm_hours[alarm];
   while(true){
     display.clearDisplay();
     print_line("Enter hour: " +String(temp_hour), 0,0,2);
@@ -190,7 +228,7 @@ void set_alarm(int alarm){
     }
     else if (pressed = OK){
       delay(200);
-      alarm_hour[alarm] = temp_hour;
+      alarm_hours[alarm] = temp_hour;
       break;   
     }
     else if(pressed == CANCEL){
@@ -199,7 +237,7 @@ void set_alarm(int alarm){
     }
   }
   
-  int temp_minute = alram_minutes[alarm];
+  int temp_minute = alarm_minutes[alarm];
   while(true){
     display.clearDisplay();
     print_line("Enter minute: " +String(temp_minute), 0,0,2);
@@ -208,7 +246,7 @@ void set_alarm(int alarm){
     if(pressed == UP){
       delay(200);
       temp_minute += 1;
-      temp_minute %= 24;
+      temp_minute %= 60;
     }
     else if (pressed = DOWN){
       delay(200);
@@ -227,4 +265,78 @@ void set_alarm(int alarm){
   }
   display.clearDisplay();
   print_line("Alarm is set", 0,0,2);
+  delay(1000);
+}
+
+void update_time_with_check_alarm(){
+  //update time
+  display.clearDisplay();
+  update_time();
+  print_time_now();
+
+  //check for alarms
+  if(alarm_enabled){
+    //iterqting through all alarms
+    for(int i=0; i< n_alarms; i++){
+      if(alarm_triggered[i] == false && hours == alarm_hours[i] && minutes == alarm_minutes[i]){
+        ring_alarm();//call the ringing function
+        alarm_triggered[i] = true;
+
+      }
+    }
+  }
+
+}
+
+void ring_alarm(){
+//show msg on dispaly
+display.clearDisplay();
+print_line("medice Time", 2, 0, 0);
+
+//light up LED1
+digitalWrite(LED_1,HIGH);
+
+//buzzer ring
+while(digitalRead(CANCEL) == HIGH){
+  for(int i = 0; i < n_notes; i++){
+    if(digitalRead(CANCEL) == LOW){
+      delay(200);
+      break;
+    }
+    tone(BUZZER, notes[i]);
+    delay(500);
+    noTone(BUZZER);
+    delay(2);
+  }
+}
+  delay(200);
+  digitalWrite(LED_1,LOW);
+}
+
+void check_temp(){
+  TempAndHumidity data = dhtSensor.getTempAndHumidity();
+  bool all_good = true;
+  if(data.temperature > 35){
+    all_good = false;
+    digitalWrite(LED_2,HIGH);
+    print_line("Temp High", 1, 40,0);
+  }
+  else if(data.temperature < 25){
+        all_good = false;
+    digitalWrite(LED_2,HIGH);
+    print_line("Temp Low", 1, 40,0);
+  }
+  if(data.humidity >85){
+        all_good = false;
+    digitalWrite(LED_2,HIGH);
+    print_line("HUMD High", 1, 50,0);
+  }
+  else if (data.humidity < 35){
+        all_good = false;
+    digitalWrite(LED_2,HIGH);
+    print_line("humd Low", 1, 50,0);
+  }
+  if(all_good){
+digitalWrite(LED_2, LOW);    
+  }
 }
