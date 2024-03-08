@@ -153,22 +153,26 @@ void loop() {
    while(true){
    if(digitalRead(UP) == LOW){
      delay(200);
+     Serial.println("UP");
      return UP;
    }
    else if(digitalRead(DOWN) == LOW){
      delay(200);
+     Serial.println("DOWN");
      return DOWN;
    }
    else if(digitalRead(CANCEL) == LOW){
      delay(200);
+     Serial.println("CANCEL");
      return CANCEL;
    }
    else if(digitalRead(OK) == LOW){
      delay(200);
+     Serial.println("OK");
      return OK;
    }
-   }
   update_time();   
+   }
    //print time();
  }
 
@@ -213,25 +217,28 @@ void set_alarm(int alarm){
   int temp_hour = alarm_hours[alarm];
   while(true){
     display.clearDisplay();
-    print_line("Enter hour: " +String(temp_hour), 0,0,2);
+    print_line("Enter hour: " + String(temp_hour), 0,0,2);
 
     int pressed = wait_for_button_press();
+    
     if(pressed == UP){
       delay(200);
       temp_hour += 1;
       temp_hour %= 24;
     }
-    else if (pressed = DOWN){
+    else if (pressed == DOWN){
       delay(200);
       temp_hour -= 1;
-      if(temp_hour < 0) temp_hour = 23;   
+      if(temp_hour < 0){
+       temp_hour = 23;   
     }
-    else if (pressed = OK){
+  }
+    else if (pressed == OK){
       delay(200);
       alarm_hours[alarm] = temp_hour;
       break;   
     }
-    else if(pressed == CANCEL){
+    else if (pressed == CANCEL){
       delay(200);
       break;
     }
@@ -240,7 +247,7 @@ void set_alarm(int alarm){
   int temp_minute = alarm_minutes[alarm];
   while(true){
     display.clearDisplay();
-    print_line("Enter minute: " +String(temp_minute), 0,0,2);
+    print_line("Enter minute: " + String(temp_minute), 0,0,2);
 
     int pressed = wait_for_button_press();
     if(pressed == UP){
@@ -248,12 +255,12 @@ void set_alarm(int alarm){
       temp_minute += 1;
       temp_minute %= 60;
     }
-    else if (pressed = DOWN){
+    else if (pressed == DOWN){
       delay(200);
       temp_minute -= 1;
       if(temp_minute < 0) temp_hour = 59;   
     }
-    else if (pressed = OK){
+    else if (pressed == OK){
       delay(200);
       alarm_minutes[alarm] = temp_minute;
       break;   
